@@ -389,7 +389,16 @@ input{font-family:inherit}
   <div class="grab"></div>
   <div class="sheet-hd"><h2>設定</h2><button class="x" data-close>閉じる</button></div>
   <div class="form">
-    <div class="sec-title" style="margin-left:2px;font-size:13px;color:#8b94a7;font-weight:600;margin:6px 4px 10px">データ</div>
+    <div class="sec-title" style="font-size:12px;color:#6b7385;font-weight:700;letter-spacing:.5px;padding:4px 2px 8px">スキャン</div>
+    <div class="set-list">
+      <button class="set-item" id="set-apikey">
+        <span class="si-ic" style="background:rgba(168,85,247,.15);color:#a855f7"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>
+        <span class="si-t">Claude AI スキャン</span>
+        <span id="apikey-badge" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(61,215,201,.15);color:#3dd7c9;display:none">ON</span>
+        <span class="si-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </button>
+    </div>
+    <div class="sec-title" style="font-size:12px;color:#6b7385;font-weight:700;letter-spacing:.5px;padding:14px 2px 8px">データ</div>
     <div class="set-list">
       <button class="set-item" id="set-export">
         <span class="si-ic" style="background:rgba(61,215,201,.14);color:#3dd7c9"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg></span>
@@ -412,6 +421,31 @@ input{font-family:inherit}
   </div>
 </div>
 
+<!-- Claude APIキー設定シート -->
+<div class="sheet" id="sheet-apikey">
+  <div class="grab"></div>
+  <div class="sheet-hd"><h2>Claude AI スキャン</h2><button class="x" data-close>閉じる</button></div>
+  <div class="form">
+    <p style="font-size:14px;color:#8b94a7;line-height:1.65;margin-bottom:20px">
+      Anthropic APIキーを設定すると、給与明細の<b style="color:#f5f7fa">全項目をほぼ確実に読み取れます</b>。キーはこの端末内にのみ保存され、外部に送信されません（明細画像の解析にのみ使用）。
+    </p>
+    <div class="field">
+      <label>Anthropic APIキー</label>
+      <input type="password" id="f-apikey" placeholder="sk-ant-..." autocomplete="off" style="font-size:14px;letter-spacing:.05em">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="save-apikey">保存する</button>
+    </div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn" id="clear-apikey" style="background:rgba(255,107,129,.1);color:#ff6b81">キーを削除</button>
+    </div>
+    <p class="hint" style="text-align:center;margin-top:16px;line-height:1.6">
+      APIキーは <span style="color:#3dd7c9">console.anthropic.com</span> で取得できます。<br>
+      キーがない場合は従来のOCRを使用します。
+    </p>
+  </div>
+</div>
+
 <!-- OCR -->
 <div class="ocr-overlay" id="ocr">
   <div class="spinner"></div>
@@ -427,6 +461,7 @@ input{font-family:inherit}
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 const KEY = 'kyuyo_v1';
+const APIKEY_KEY = 'kyuyo_apikey';
 let DATA = [];
 let editingId = null;
 let detailId = null;
@@ -435,6 +470,8 @@ let yearMode = 'nendo';
 
 function load(){ try{ DATA = JSON.parse(localStorage.getItem(KEY)) || []; }catch(e){ DATA = []; } }
 function save(){ localStorage.setItem(KEY, JSON.stringify(DATA)); }
+function getApiKey(){ return localStorage.getItem(APIKEY_KEY) || ''; }
+function updateApikeyBadge(){ const k=getApiKey(); document.getElementById('apikey-badge').style.display=k?'inline':'none'; }
 
 const yen = n => '¥' + Math.round(n||0).toLocaleString('ja-JP');
 const yenParts = n => ({ yen:'¥', num: Math.round(n||0).toLocaleString('ja-JP') });
@@ -766,7 +803,7 @@ const scrim = document.getElementById('scrim');
 function openSheet(id){ scrim.classList.add('show'); document.getElementById(id).classList.add('show'); }
 function closeSheets(){
   scrim.classList.remove('show');
-  ['sheet-add','sheet-form','sheet-detail','sheet-set'].forEach(s => document.getElementById(s).classList.remove('show'));
+  ['sheet-add','sheet-form','sheet-detail','sheet-set','sheet-apikey'].forEach(s => document.getElementById(s).classList.remove('show'));
 }
 scrim.onclick = closeSheets;
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
@@ -775,7 +812,27 @@ function openAdd(){ openSheet('sheet-add'); }
 document.getElementById('fab').onclick = openAdd;
 document.getElementById('opt-manual').onclick = () => { closeSheets(); setTimeout(()=>openForm(null),260); };
 document.getElementById('opt-scan').onclick = () => document.getElementById('file-img').click();
-document.getElementById('settings-btn').onclick = () => openSheet('sheet-set');
+document.getElementById('settings-btn').onclick = () => { updateApikeyBadge(); openSheet('sheet-set'); };
+
+/* APIキー設定 */
+document.getElementById('set-apikey').onclick = () => {
+  document.getElementById('f-apikey').value = getApiKey();
+  openSheet('sheet-apikey');
+};
+document.getElementById('save-apikey').onclick = () => {
+  const k = document.getElementById('f-apikey').value.trim();
+  localStorage.setItem(APIKEY_KEY, k);
+  updateApikeyBadge();
+  closeSheets();
+  toast(k ? 'Claude AIスキャンが有効になりました' : 'APIキーを削除しました');
+};
+document.getElementById('clear-apikey').onclick = () => {
+  localStorage.removeItem(APIKEY_KEY);
+  document.getElementById('f-apikey').value = '';
+  updateApikeyBadge();
+  closeSheets();
+  toast('APIキーを削除しました');
+};
 
 /* =========================================================
    入力フォーム
@@ -982,28 +1039,110 @@ function parseSlip(text){
   return out;
 }
 
+/* Claude APIで画像を解析 */
+async function scanWithClaude(file){
+  const apiKey = getApiKey();
+  if(!apiKey) throw new Error('no-key');
+
+  // JPEG圧縮（最大1600px）してbase64化
+  const compressed = await new Promise(resolve=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const scale=Math.min(1600/Math.max(img.width,img.height),1);
+      const W=Math.round(img.width*scale), H=Math.round(img.height*scale);
+      const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+      cv.getContext('2d').drawImage(img,0,0,W,H);
+      URL.revokeObjectURL(url);
+      cv.toBlob(b=>resolve(b),'image/jpeg',0.88);
+    };
+    img.src=url;
+  });
+  const b64 = await new Promise(resolve=>{
+    const rd=new FileReader();
+    rd.onload=()=>resolve(rd.result.split(',')[1]);
+    rd.readAsDataURL(compressed);
+  });
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body: JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:800,
+      messages:[{
+        role:'user',
+        content:[
+          { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
+          { type:'text', text:`この給与明細画像から以下のJSONを抽出してください。値がない項目はnull、数値はカンマなしの整数、年月はYYYY-MM形式、時間は"156:00"形式の文字列で返してください。JSONのみ返してください。
+{"ym":null,"gross":null,"ded":null,"net":null,"basic":null,"otPay":null,"hlth":null,"pnsn":null,"empIns":null,"incTax":null,"resTax":null,"wDays":null,"pDays":null,"wHours":null,"otHours":null,"spLeave":null,"bankXfr":null,"cashPay":null}` }
+        ]
+      }]
+    })
+  });
+
+  if(!resp.ok){
+    const e=await resp.json().catch(()=>({}));
+    throw new Error(e.error?.message||'API error '+resp.status);
+  }
+  const data=await resp.json();
+  const text=data.content[0].text;
+  const match=text.match(/\{[\s\S]*\}/);
+  if(!match) throw new Error('parse-error');
+  return JSON.parse(match[0]);
+}
+
 document.getElementById('file-img').addEventListener('change', async e=>{
   const file=e.target.files[0]; e.target.value=''; if(!file) return;
   closeSheets();
-  const ov=document.getElementById('ocr'), bar=document.getElementById('ocr-bar');
+  const ov=document.getElementById('ocr'), bar=document.getElementById('ocr-bar'), otEl=ov.querySelector('.ot');
   bar.style.width='0%'; ov.classList.add('show');
-  try{
-    if(typeof Tesseract==='undefined') throw new Error('no-lib');
-    bar.style.width='5%';
-    const processed=await preprocessImage(file);
-    const worker=await Tesseract.createWorker('jpn+eng',1,{
-      logger:m=>{ if(m.status==='recognizing text') bar.style.width=(5+Math.round(m.progress*90))+'%'; }
-    });
-    const {data:{text}}=await worker.recognize(processed);
-    await worker.terminate();
-    ov.classList.remove('show');
-    const r=parseSlip(text);
-    toast(r.gross||r.net||r.ded ? '読み取りました。内容を確認してください' : '一部読み取れませんでした。確認してください');
-    setTimeout(()=>openForm(null,r),200);
-  }catch(err){
-    ov.classList.remove('show');
-    toast(String(err.message).includes('no-lib') ? '読み取り機能を読み込めませんでした' : '読み取りに失敗しました。手入力してください');
-    setTimeout(()=>openForm(null,null),200);
+
+  const apiKey = getApiKey();
+  if(apiKey){
+    /* Claude AIスキャン */
+    otEl.textContent='Claude AIで解析中…';
+    bar.style.width='30%';
+    try{
+      const r=await scanWithClaude(file);
+      bar.style.width='100%';
+      ov.classList.remove('show');
+      otEl.textContent='読み取り中…';
+      toast('読み取りました。内容を確認してください');
+      setTimeout(()=>openForm(null,r),200);
+    }catch(err){
+      ov.classList.remove('show');
+      otEl.textContent='読み取り中…';
+      const msg=String(err.message);
+      if(msg.includes('401')||msg.includes('403')) toast('APIキーが無効です。設定を確認してください');
+      else toast('読み取りに失敗しました：'+msg.slice(0,40));
+      setTimeout(()=>openForm(null,null),200);
+    }
+  } else {
+    /* Tesseract OCR（フォールバック） */
+    otEl.textContent='読み取り中…';
+    try{
+      if(typeof Tesseract==='undefined') throw new Error('no-lib');
+      bar.style.width='5%';
+      const processed=await preprocessImage(file);
+      const worker=await Tesseract.createWorker('jpn+eng',1,{
+        logger:m=>{ if(m.status==='recognizing text') bar.style.width=(5+Math.round(m.progress*90))+'%'; }
+      });
+      const {data:{text}}=await worker.recognize(processed);
+      await worker.terminate();
+      ov.classList.remove('show');
+      const r=parseSlip(text);
+      toast(r.gross||r.net||r.ded?'読み取りました。内容を確認してください':'読み取れませんでした。Claude AIスキャンをお試しください');
+      setTimeout(()=>openForm(null,r),200);
+    }catch(err){
+      ov.classList.remove('show');
+      toast(String(err.message).includes('no-lib')?'読み取り機能を読み込めませんでした':'読み取りに失敗しました');
+      setTimeout(()=>openForm(null,null),200);
+    }
   }
 });
 
@@ -1045,7 +1184,7 @@ function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 let toastTimer=null;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2400); }
 
-load(); render();
+load(); render(); updateApikeyBadge();
 </script>
 </body>
 </html>
