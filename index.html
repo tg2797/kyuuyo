@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0c10">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>給与明細</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -439,21 +441,27 @@ input{font-family:inherit}
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
+/* =========================================================
+   給与明細 — 単一HTML / localStorage
+   ========================================================= */
 const KEY='kyuyo_v1';
-let DATA=[];
+let DATA=[];          // {id, ym:'YYYY-MM', co, gross, ded, net, memo}
 let editingId=null;
-let metric='net';
-let yearMode='nendo';
+let metric='net';     // net | gross | ded
+let yearMode='nendo'; // nendo(4月始まり) | calendar
 
+/* ---- 保存・読込 ---- */
 function load(){ try{DATA=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){DATA=[]} }
 function save(){ localStorage.setItem(KEY,JSON.stringify(DATA)) }
 
+/* ---- 整形 ---- */
 const yen = n => '¥'+Math.round(n||0).toLocaleString('ja-JP');
 const yenParts = n => ({yen:'¥', num:Math.round(n||0).toLocaleString('ja-JP')});
 const sorted = () => [...DATA].sort((a,b)=> a.ym<b.ym?-1:a.ym>b.ym?1:0);
 const metricLabel = {net:'手取り', gross:'総支給', ded:'控除'};
 const val = (d,m)=> (m==='net'?d.net : m==='gross'?d.gross : d.ded) || 0;
 
+/* 年度キー：nendo=4月始まり / calendar=暦年 */
 function yearKeyOf(ym){
   const [y,m]=ym.split('-').map(Number);
   if(yearMode==='calendar') return String(y);
@@ -468,8 +476,12 @@ function yearRange(key){
   const k=Number(key); return key+'/4 〜 '+(k+1)+'/3';
 }
 
+/* =========================================================
+   描画
+   ========================================================= */
 function render(){ renderList(); renderTrend(); renderYear(); }
 
+/* ---- 明細リスト ---- */
 function renderList(){
   const body=document.getElementById('list-body');
   const sub=document.getElementById('list-sub');
@@ -489,6 +501,7 @@ function renderList(){
   const prev=items.length>1?items[items.length-2]:null;
   sub.textContent=items.length+'件の記録';
 
+  // ヒーロー
   let delta='';
   if(prev){
     const d=val(latest,'net')-val(prev,'net');
@@ -504,6 +517,7 @@ function renderList(){
     <div class="hero-meta">${delta}<span class="hero-month">${ly}年${Number(lm)}月${latest.co?'・'+esc(latest.co):''}</span></div>
   </div>`;
 
+  // リスト（新しい順）
   const rows=[...items].reverse().map(d=>{
     const [y,m]=d.ym.split('-');
     const np=yenParts(val(d,'net'));
@@ -526,11 +540,12 @@ function renderList(){
   body.querySelectorAll('.row').forEach(r=> r.onclick=()=>openEdit(r.dataset.id));
 }
 
+/* ---- 推移グラフ ---- */
 function renderTrend(){
   const body=document.getElementById('trend-body');
   const items=sorted();
   const seg=`<div class="seg">
-    ${['net','gross','ded'].map(m=>`<button data-m="${m}" class="${m===metric?'on':''}">  ${metricLabel[m]}</button>`).join('')}
+    ${['net','gross','ded'].map(m=>`<button data-m="${m}" class="${m===metric?'on':''}">${metricLabel[m]}</button>`).join('')}
   </div>`;
 
   if(items.length===0){
@@ -577,6 +592,7 @@ function bindSeg(){
   });
 }
 
+/* SVG折れ線（なめらか曲線 + グラデーション + スクラブ） */
 function drawChart(series){
   const box=document.getElementById('chart-box');
   if(!box) return;
@@ -595,6 +611,7 @@ function drawChart(series){
   const linePath=smooth(pts);
   const areaPath=n>1 ? linePath+` L ${pts[n-1].x} ${H-padB} L ${pts[0].x} ${H-padB} Z` : '';
 
+  // グリッド線（3本）
   let grid='';
   for(let g=0; g<=2; g++){
     const gy=padT+(g/2)*(H-padT-padB);
@@ -614,7 +631,7 @@ function drawChart(series){
       </linearGradient>
     </defs>
     ${grid}
-    ${areaPath?`<path d="${areaPath}" fill="url(#area-g)"/>`:''}  
+    ${areaPath?`<path d="${areaPath}" fill="url(#area-g)"/>`:''}
     ${n>1?`<path d="${linePath}" fill="none" stroke="url(#stroke-g)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="line-p"/>`:''}
     ${dots}
     <circle id="hi-dot" cx="0" cy="0" r="6" fill="#3dd7c9" stroke="#0a0c10" stroke-width="3" style="opacity:0"/>
@@ -624,10 +641,12 @@ function drawChart(series){
   box.innerHTML=svg;
   box.appendChild(scrub);
 
+  // 線のドロー・イン
   const lp=document.getElementById('line-p');
   if(lp){ const len=lp.getTotalLength(); lp.style.strokeDasharray=len; lp.style.strokeDashoffset=len;
     requestAnimationFrame(()=>{ lp.style.transition='stroke-dashoffset .7s ease'; lp.style.strokeDashoffset=0; }); }
 
+  // スクラブ操作
   const curVal=document.getElementById('cur-val');
   const curMonth=document.getElementById('cur-month');
   const hiDot=document.getElementById('hi-dot');
@@ -651,7 +670,7 @@ function drawChart(series){
   };
   const handle=(clientX)=>{
     const rect=box.getBoundingClientRect();
-    const rx=(clientX-rect.left)/ (box.clientWidth/W);
+    const rx=(clientX-rect.left)/ (box.clientWidth/W); // SVG座標へ
     let best=pts[0],bd=1e9;
     pts.forEach(p=>{const d=Math.abs(p.x-rx); if(d<bd){bd=d;best=p;}});
     showAt(best);
@@ -661,6 +680,7 @@ function drawChart(series){
   box.ontouchend  =reset;
   box.onmousedown =e=>handle(e.clientX);
 
+  // X軸ラベル（最大5つ）
   const xl=document.getElementById('xlabels');
   const labelIdx=[];
   const step=Math.max(1,Math.ceil(n/5));
@@ -681,6 +701,7 @@ function smooth(pts){
   return d;
 }
 
+/* ---- 年度別 ---- */
 function renderYear(){
   const body=document.getElementById('year-body');
   const seg=`<div class="seg">
@@ -726,6 +747,9 @@ function bindYearSeg(){
   document.querySelectorAll('[data-y]').forEach(b=> b.onclick=()=>{yearMode=b.dataset.y; renderYear();});
 }
 
+/* =========================================================
+   タブ切替
+   ========================================================= */
 document.querySelectorAll('.tab').forEach(t=>{
   t.onclick=()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
@@ -740,6 +764,9 @@ document.querySelectorAll('.tab').forEach(t=>{
 function drawCurrentTrend(){ const s=sorted().map(d=>({ym:d.ym,v:val(d,metric)})); if(s.length) drawChart(s); }
 window.addEventListener('resize',()=>{ if(document.getElementById('v-trend').classList.contains('active')) drawCurrentTrend(); });
 
+/* =========================================================
+   シート開閉
+   ========================================================= */
 const scrim=document.getElementById('scrim');
 function openSheet(id){ scrim.classList.add('show'); document.getElementById(id).classList.add('show'); }
 function closeSheets(){
@@ -749,13 +776,18 @@ function closeSheets(){
 scrim.onclick=closeSheets;
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheets);
 
+/* 追加メニュー */
 function openAdd(){ openSheet('sheet-add'); }
 document.getElementById('fab').onclick=openAdd;
 document.getElementById('opt-manual').onclick=()=>{ closeSheets(); setTimeout(()=>openForm(null),260); };
 document.getElementById('opt-scan').onclick=()=>{ document.getElementById('file-img').click(); };
 
+/* 設定 */
 document.getElementById('settings-btn').onclick=()=>openSheet('sheet-set');
 
+/* =========================================================
+   入力フォーム
+   ========================================================= */
 const fYm=document.getElementById('f-ym'), fCo=document.getElementById('f-co'),
       fGross=document.getElementById('f-gross'), fDed=document.getElementById('f-ded'),
       fNet=document.getElementById('f-net'), fMemo=document.getElementById('f-memo');
@@ -818,6 +850,9 @@ document.getElementById('form-delete').onclick=()=>{
   }
 };
 
+/* =========================================================
+   スキャン（OCR）
+   ========================================================= */
 const z2h = s => s
   .replace(/[０-９]/g,d=>String.fromCharCode(d.charCodeAt(0)-0xFEE0))
   .replace(/，/g,',').replace(/￥/g,'¥').replace(/　/g,' ');
@@ -838,6 +873,7 @@ function parseSlip(text){
     if(out.gross===null && /(総支給|支給額合計|支給合計|支給計|課税支給)/.test(l)) out.gross=findNum(l)??out.gross;
     if(out.ded===null && /(控除合計|控除額合計|控除計|控除額)/.test(l)) out.ded=findNum(l)??out.ded;
   });
+  // 年月
   const t=z2h(text);
   let m=t.match(/(20\d{2})\s*[年\/\.\-]\s*(1[0-2]|0?[1-9])/);
   if(m) out.ym=m[1]+'-'+String(m[2]).padStart(2,'0');
@@ -879,6 +915,9 @@ document.getElementById('file-img').addEventListener('change',async e=>{
   }
 });
 
+/* =========================================================
+   バックアップ
+   ========================================================= */
 document.getElementById('set-export').onclick=()=>{
   const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -910,6 +949,9 @@ document.getElementById('set-clear').onclick=()=>{
   }
 };
 
+/* =========================================================
+   ユーティリティ
+   ========================================================= */
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 let toastTimer=null;
 function toast(msg){
@@ -917,6 +959,7 @@ function toast(msg){
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
 
+/* 起動 */
 load(); render();
 </script>
 </body>

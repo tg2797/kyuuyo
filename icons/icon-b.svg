@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0c10"/>
+      <stop offset="100%" stop-color="#111520"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2035"/>
+      <stop offset="100%" stop-color="#131825"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3dd7c9"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景 -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <!-- 明細カード -->
+  <rect x="90" y="90" width="332" height="332" rx="36" fill="url(#card)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+  <!-- カラーバー（上端） -->
+  <rect x="90" y="90" width="332" height="10" rx="5" fill="url(#accent)"/>
+  <!-- 行ライン1 -->
+  <rect x="126" y="160" width="180" height="14" rx="7" fill="rgba(255,255,255,0.25)"/>
+  <rect x="330" y="160" width="60" height="14" rx="7" fill="url(#accent)" opacity="0.8"/>
+  <!-- 行ライン2 -->
+  <rect x="126" y="200" width="140" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+  <rect x="330" y="200" width="60" height="12" rx="6" fill="rgba(255,255,255,0.15)"/>
+  <!-- 行ライン3 -->
+  <rect x="126" y="238" width="160" height="12" rx="6" fill="rgba(255,255,255,0.12)"/>
+  <rect x="330" y="238" width="60" height="12" rx="6" fill="rgba(255,255,255,0.15)"/>
+  <!-- 区切り線 -->
+  <rect x="110" y="272" width="292" height="1" fill="rgba(255,255,255,0.08)"/>
+  <!-- 手取り金額（大） -->
+  <rect x="126" y="296" width="100" height="14" rx="7" fill="rgba(255,255,255,0.2)"/>
+  <rect x="260" y="288" width="130" height="30" rx="8" fill="url(#accent)" opacity="0.9"/>
+</svg>

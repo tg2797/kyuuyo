@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="40%">
+      <stop offset="0%" stop-color="#131b2e"/>
+      <stop offset="100%" stop-color="#080b14"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3dd7c9"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(61,215,201,0.25)"/>
+      <stop offset="100%" stop-color="rgba(59,130,246,0.05)"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景 -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <!-- 外円グロー -->
+  <circle cx="256" cy="230" r="160" fill="url(#glow)"/>
+  <!-- 外円リング -->
+  <circle cx="256" cy="230" r="155" fill="none" stroke="url(#accent)" stroke-width="4" opacity="0.3"/>
+  <!-- 内円 -->
+  <circle cx="256" cy="230" r="118" fill="rgba(61,215,201,0.06)" stroke="url(#accent)" stroke-width="2.5" opacity="0.5"/>
+  <!-- ¥ 中央 -->
+  <text x="256" y="295" font-family="-apple-system, Helvetica Neue, sans-serif" font-size="180" font-weight="900" text-anchor="middle" fill="url(#accent)">¥</text>
+  <!-- 上昇矢印 -->
+  <path d="M 340 405 L 380 355 L 420 380" fill="none" stroke="url(#accent)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+  <path d="M 380 355 L 380 405" fill="none" stroke="url(#accent)" stroke-width="9" stroke-linecap="round" opacity="0.7"/>
+  <!-- 月ラベル点 -->
+  <circle cx="100" cy="420" r="6" fill="rgba(61,215,201,0.5)"/>
+  <circle cx="140" cy="400" r="6" fill="rgba(61,215,201,0.6)"/>
+  <circle cx="180" cy="390" r="6" fill="rgba(61,215,201,0.7)"/>
+  <circle cx="220" cy="375" r="6" fill="rgba(61,215,201,0.8)"/>
+</svg>
