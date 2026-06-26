@@ -99,6 +99,29 @@ input{font-family:inherit}
 .stat .v{font-size:20px;font-weight:700;letter-spacing:-.5px;margin-top:3px}
 .stat .v .yen{font-size:13px;color:#9aa3b2;margin-right:1px}
 
+/* ボーナスバッジ */
+.bonus-badge{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.3px;padding:2px 6px;border-radius:6px;background:linear-gradient(120deg,#f59e0b,#f97316);color:#fff;margin-top:3px;line-height:1.3}
+.bonus-toggle-row{display:flex;align-items:center;justify-content:space-between;background:#0f1218;border:.5px solid rgba(255,255,255,.1);border-radius:13px;padding:13px 15px;margin-bottom:14px}
+.bonus-toggle-row .lbl{font-size:15px;color:#f5f7fa}
+.bonus-toggle-sw{width:44px;height:26px;border-radius:13px;background:rgba(255,255,255,.15);position:relative;transition:background .2s;flex-shrink:0}
+.bonus-toggle-sw.on{background:linear-gradient(120deg,#f59e0b,#f97316)}
+.bonus-toggle-sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.bonus-toggle-sw.on::after{left:21px}
+/* 年カレンダーグリッド */
+.yr-cal{margin-bottom:20px}
+.yr-cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.yr-cal-title{font-size:14px;font-weight:700;color:#f5f7fa}
+.yr-cal-legend{display:flex;align-items:center;gap:4px;font-size:11px;color:#8b94a7;font-weight:600}
+.yr-cal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cal-cell{background:#14171f;border:.5px solid rgba(255,255,255,.06);border-radius:13px;padding:10px 8px;text-align:center;position:relative}
+.cal-cell.has-data{background:#1a1f2c}
+.cal-cell.is-bonus{border-color:rgba(249,163,48,.35);background:rgba(245,158,11,.06)}
+.cal-cell.is-current{border-color:rgba(249,163,48,.6);box-shadow:0 0 0 1px rgba(249,163,48,.3)}
+.cal-cell .cm{font-size:12px;font-weight:700;color:#8b94a7;margin-bottom:4px}
+.cal-cell.has-data .cm{color:#c2cad8}
+.cal-cell .cv{font-size:11.5px;font-weight:700;color:#3dd7c9;letter-spacing:-.3px}
+.cal-cell .cn{font-size:12px;color:#4b5366}
+.cal-cell .crown{font-size:11px;position:absolute;top:5px;right:6px;line-height:1}
 /* 年度別 */
 .year-card{background:#14171f;border:.5px solid rgba(255,255,255,.06);border-radius:18px;padding:16px 18px;margin-bottom:12px}
 .year-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
@@ -326,6 +349,10 @@ input{font-family:inherit}
     <div class="field"><label>年月</label><input type="month" id="f-ym"></div>
     <div class="field"><label>会社名（任意）</label><input type="text" id="f-co" placeholder="例）東建設株式会社" autocomplete="off"></div>
     <div class="field"><label>メモ（任意）</label><input type="text" id="f-memo" placeholder="残業多めなど" autocomplete="off"></div>
+    <div class="bonus-toggle-row" id="bonus-toggle-row">
+      <span class="lbl">👑 ボーナス月</span>
+      <div class="bonus-toggle-sw" id="f-bonus"></div>
+    </div>
 
     <!-- 勤怠 -->
     <div class="form-sec">勤怠</div>
@@ -538,7 +565,7 @@ function renderList(){
       ? `出勤 <b>${d.wDays||'—'}日</b>　有休 <b>${d.pDays||0}日</b>${d.otHours ? `　残業 <b>${d.otHours}</b>` : ''}`
       : '勤怠データなし';
     return `<div class="row" data-id="${d.id}">
-      <div class="row-ym"><div class="y">${y}</div><div class="m tnum">${Number(m)}<span class="u">月</span></div></div>
+      <div class="row-ym"><div class="y">${y}</div><div class="m tnum">${Number(m)}<span class="u">月</span></div>${d.bonus ? '<div class="bonus-badge">ボーナス</div>' : ''}</div>
       <div class="row-bar"></div>
       <div class="row-body">
         <div class="row-co">${d.co ? esc(d.co) : '会社名未入力'}</div>
@@ -553,7 +580,24 @@ function renderList(){
     </div>`;
   }).join('');
 
-  body.innerHTML = hero + `<div class="sec-title" style="font-size:13px;color:#8b94a7;font-weight:600;margin:6px 4px 10px">すべての記録</div><div class="list">${rows}</div>`;
+  // 年間カレンダーグリッド（最新年）
+  const latestYear = latest.ym.split('-')[0];
+  const now2 = new Date();
+  const nowYm = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}`;
+  const ymMap = {};
+  DATA.filter(d=>d.ym.startsWith(latestYear)).forEach(d=>{ ymMap[d.ym]=d; });
+  const calCells = Array.from({length:12},(_,i)=>{
+    const mo = String(i+1).padStart(2,'0');
+    const ym = `${latestYear}-${mo}`;
+    const d = ymMap[ym];
+    const isCur = ym===nowYm;
+    const isBonus = d && d.bonus;
+    const cls = ['cal-cell', d?'has-data':'', isBonus?'is-bonus':'', isCur?'is-current':''].filter(Boolean).join(' ');
+    return `<div class="${cls}">${isBonus?'<span class="crown">👑</span>':''}<div class="cm">${i+1}月</div>${d?`<div class="cv">¥${(d.net||0).toLocaleString('ja-JP')}</div>`:'<div class="cn">—</div>'}</div>`;
+  }).join('');
+  const calHtml = `<div class="yr-cal"><div class="yr-cal-hd"><div class="yr-cal-title">${latestYear}年の給与カレンダー</div><div class="yr-cal-legend"><span>👑</span>ボーナス月</div></div><div class="yr-cal-grid">${calCells}</div></div>`;
+
+  body.innerHTML = hero + calHtml + `<div class="sec-title" style="font-size:13px;color:#8b94a7;font-weight:600;margin:6px 4px 10px">すべての記録</div><div class="list">${rows}</div>`;
   body.querySelectorAll('.row').forEach(r => r.onclick = () => openDetail(r.dataset.id));
 }
 
@@ -656,7 +700,7 @@ function deleteRecord(id){
 function renderTrend(){
   const body = document.getElementById('trend-body');
   const items = sorted();
-  const seg = `<div class="seg">${['net','gross','ded'].map(m=>`<button data-m="${m}" class="${m===metric?'on':''}">${metricLabel[m]}</button>`).join('')}</div>`;
+  const seg = `<div class="seg">${['net','gross','ded'].map(m=>`<button data-m="${m}" class="${m===metric?'on':''}">${ metricLabel[m]}</button>`).join('')}</div>`;
   if(!items.length){
     body.innerHTML = seg + `<div class="empty"><div class="e-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 5-7 4 4"/></svg></div><h3>データがありません</h3><p>明細を追加すると推移が表示されます。</p></div>`;
     bindSeg(); return;
@@ -886,6 +930,8 @@ function openForm(id, prefill){
   document.getElementById('f-ym').value = d.ym || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   document.getElementById('f-co').value = d.co || '';
   document.getElementById('f-memo').value = d.memo || '';
+  const bonusSw = document.getElementById('f-bonus');
+  bonusSw.classList.toggle('on', !!d.bonus);
   // 勤怠
   document.getElementById('f-wdays').value = d.wDays || '';
   document.getElementById('f-pdays').value = d.pDays || '';
@@ -903,6 +949,7 @@ function openForm(id, prefill){
   openSheet('sheet-form');
 }
 
+document.getElementById('f-bonus').onclick = () => document.getElementById('f-bonus').classList.toggle('on');
 document.getElementById('form-cancel').onclick = closeSheets;
 document.getElementById('form-save').onclick = () => {
   const ym = document.getElementById('f-ym').value;
@@ -916,6 +963,7 @@ document.getElementById('form-save').onclick = () => {
   const rec = {
     id: editingId || ('p'+Date.now()), ym,
     co: strF('f-co'), memo: strF('f-memo'),
+    bonus: document.getElementById('f-bonus').classList.contains('on'),
     wDays:  parseFloat(wdRaw)||0,  pDays: parseFloat(pdRaw)||0,
     wHours: strF('f-whours'),      otHours: strF('f-othours'),
     spLeave: parseFloat(spRaw)||0,
@@ -1024,7 +1072,7 @@ function parseSlip(text){
   }
 
   /* 年月 */
-  let m=t.match(/(20\d{2})\s*[年\/\.\-]\s*(1[0-2]|0?[1-9])/);
+  let m=t.match(/(20\d{2})\s*[年\/.\-]\s*(1[0-2]|0?[1-9])/);
   if(m) out.ym=m[1]+'-'+String(m[2]).padStart(2,'0');
   else{
     m=t.match(/令和\s*(元|\d{1,2})\s*年\s*(1[0-2]|0?[1-9])\s*月/);
@@ -1189,7 +1237,7 @@ document.getElementById('file-json').addEventListener('change', e=>{
     try{
       const arr=JSON.parse(rd.result); if(!Array.isArray(arr)) throw 0;
       const map={}; [...DATA,...arr].forEach(d=>{ if(d&&d.ym) map[d.id||('p'+d.ym+Math.random())]=d; });
-      DATA=Object.values(map).map(d=>({id:d.id||('p'+Date.now()+Math.random()),ym:d.ym,co:d.co||'',memo:d.memo||'',gross:d.gross||0,ded:d.ded||0,net:d.net||0,wDays:d.wDays||0,pDays:d.pDays||0,wHours:d.wHours||'',otHours:d.otHours||'',spLeave:d.spLeave||0,basic:d.basic||0,otPay:d.otPay||0,hlth:d.hlth||0,pnsn:d.pnsn||0,empIns:d.empIns||0,incTax:d.incTax||0,resTax:d.resTax||0,bankXfr:d.bankXfr||0,cashPay:d.cashPay||0}));
+      DATA=Object.values(map).map(d=>({id:d.id||('p'+Date.now()+Math.random()),ym:d.ym,co:d.co||'',memo:d.memo||'',bonus:!!d.bonus,gross:d.gross||0,ded:d.ded||0,net:d.net||0,wDays:d.wDays||0,pDays:d.pDays||0,wHours:d.wHours||'',otHours:d.otHours||'',spLeave:d.spLeave||0,basic:d.basic||0,otPay:d.otPay||0,hlth:d.hlth||0,pnsn:d.pnsn||0,empIns:d.empIns||0,incTax:d.incTax||0,resTax:d.resTax||0,bankXfr:d.bankXfr||0,cashPay:d.cashPay||0}));
       save(); render(); closeSheets(); toast(`取り込みました（${arr.length}件）`);
     }catch(err){ toast('ファイルを読み込めませんでした'); }
   };
