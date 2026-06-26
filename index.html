@@ -609,7 +609,7 @@ function openDetail(id){
   if(!d) return;
   detailId = id;
   const [y,m] = d.ym.split('-');
-  document.getElementById('det-title').textContent = y+'年'+Number(m)+'月';
+  document.getElementById('det-title').innerHTML = y+'年'+Number(m)+'月'+(d.bonus ? ' <span style="font-size:13px;font-weight:700;padding:2px 7px;border-radius:8px;background:linear-gradient(120deg,#f59e0b,#f97316);color:#fff;vertical-align:middle">ボーナス</span>' : '');
 
   const kintaiSum = (d.wDays||d.pDays)
     ? `出勤 ${d.wDays||'—'}日 / 有休 ${d.pDays||0}日`
@@ -949,7 +949,7 @@ function openForm(id, prefill){
   openSheet('sheet-form');
 }
 
-document.getElementById('f-bonus').onclick = () => document.getElementById('f-bonus').classList.toggle('on');
+document.getElementById('bonus-toggle-row').onclick = () => document.getElementById('f-bonus').classList.toggle('on');
 document.getElementById('form-cancel').onclick = closeSheets;
 document.getElementById('form-save').onclick = () => {
   const ym = document.getElementById('f-ym').value;
@@ -1072,13 +1072,13 @@ function parseSlip(text){
   }
 
   /* 年月 */
-  let m=t.match(/(20\d{2})\s*[年\/.\-]\s*(1[0-2]|0?[1-9])/);
+  let m=t.match(/(20\d{2})\s*[年\/.-]\s*(1[0-2]|0?[1-9])/);
   if(m) out.ym=m[1]+'-'+String(m[2]).padStart(2,'0');
   else{
     m=t.match(/令和\s*(元|\d{1,2})\s*年\s*(1[0-2]|0?[1-9])\s*月/);
     if(m){ const r=m[1]==='元'?1:parseInt(m[1],10); out.ym=(2018+r)+'-'+String(m[2]).padStart(2,'0'); }
     else{
-      m=t.match(/R\s*(\d{1,2})\s*[\.\/#x5C;年\-]\s*(1[0-2]|0?[1-9])/);
+      m=t.match(/R\s*(\d{1,2})\s*[\/. #x5C;年\-]\s*(1[0-2]|0?[1-9])/);
       if(m) out.ym=(2018+parseInt(m[1],10))+'-'+String(m[2]).padStart(2,'0');
     }
   }
@@ -1099,8 +1099,9 @@ async function scanWithClaude(file){
       const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
       cv.getContext('2d').drawImage(img,0,0,W,H);
       URL.revokeObjectURL(url);
-      cv.toBlob(b=>resolve(b),'image/jpeg',0.95);
+      cv.toBlob(b=>resolve(b||file),'image/jpeg',0.95);
     };
+    img.onerror=()=>{ URL.revokeObjectURL(url); resolve(file); };
     img.src=url;
   });
   const b64 = await new Promise(resolve=>{
